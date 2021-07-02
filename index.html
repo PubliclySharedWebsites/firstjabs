@@ -1,0 +1,89 @@
+<html>
+<head>
+    <script src="https://cdn.plot.ly/plotly-2.1.0.min.js"></script>
+</head>
+<body>
+    <div id="tester" style="width:100%; height:100%"></div>
+
+    <script>
+        var xmlhttp = new XMLHttpRequest();
+        var url = "https://coronavirus.data.gov.uk/api/v1/data?filters=areaType=nation;areaName=England&structure=%7B%22areaType%22:%22areaType%22,%22areaName%22:%22areaName%22,%22areaCode%22:%22areaCode%22,%22date%22:%22date%22,%22vaccinationsAgeDemographics%22:%22vaccinationsAgeDemographics%22%7D&format=json";
+
+        xmlhttp.onreadystatechange = function() {
+            if (this.readyState == 4 && this.status == 200) {
+                var data = JSON.parse(this.responseText);
+                console.log(data)
+                var dates = data.data.map(x => x.date)
+
+
+                // Get the age groups
+                let ages = data.data[0].vaccinationsAgeDemographics.map(x => x.age)
+                let rawAges = ages.reduce((base, x) => {base[x] = []; return base;}, {})
+
+                data.data.forEach((datum) => {
+                    let i = 0;
+                    ages.forEach((age) => {
+                        rawAges[age].push(datum.vaccinationsAgeDemographics[i].cumVaccinationFirstDoseUptakeByVaccinationDatePercentage)
+                        i++;
+                    })
+                })
+
+                traces = []
+                for (let [key, value] of Object.entries(rawAges)) {
+                    traces.push({
+                        name: key,
+                        x: dates,
+                        y: value
+                    })
+                }
+
+                console.log(dates, rawAges)
+                TESTER = document.getElementById('tester');
+                Plotly.newPlot(
+                    TESTER,
+                    traces,
+                    {
+                        title: {
+                            text:'1st Dose Vaccine Uptake by Age Group',
+                            font: {
+                            family: 'Courier New, monospace',
+                            size: 28
+                            },
+                            xref: 'paper',
+                            x: 0.05,
+                        },
+                        xaxis: {
+                            title: {
+                            text: 'Date',
+                            font: {
+                                family: 'Courier New, monospace',
+                                size: 18,
+                                color: '#7f7f7f'
+                            }
+                            },
+                        },
+                        yaxis: {
+                            title: {
+                            text: 'Percentage with 1st dose',
+                            font: {
+                                family: 'Courier New, monospace',
+                                size: 18,
+                                color: '#7f7f7f'
+                            }
+                            }
+                        }
+                    },
+                    {responsive: true}
+                );
+
+            }
+        };
+        xmlhttp.open("GET", url, true);
+        xmlhttp.send();
+
+
+
+    </script>
+
+</body>
+</html>
