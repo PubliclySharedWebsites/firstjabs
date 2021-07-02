@@ -37,6 +37,9 @@
                         y: value
                     })
                 }
+                
+                // Put the youngest age at the bottom of the legend
+                traces.reverse()
 
                 console.log(dates, rawAges)
                 TESTER = document.getElementById('tester');
