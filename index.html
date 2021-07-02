@@ -30,8 +30,9 @@
 
                 traces = []
                 for (let [key, value] of Object.entries(rawAges)) {
+                    name = key.replace("_", "-")
                     traces.push({
-                        name: key,
+                        name,
                         x: dates,
                         y: value
                     })
