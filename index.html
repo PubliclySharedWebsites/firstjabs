@@ -1,94 +1,213 @@
+<!DOCTYPE html>
 <html>
-<head>
+  <head>
     <script src="https://cdn.plot.ly/plotly-2.1.0.min.js"></script>
-</head>
-<body>
-    <div id="tester" style="width:100%; height:100%"></div>
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bulma@0.9.3/css/bulma.min.css"
+    />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      .section {
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        height: 100vh;
+      }
+
+      .hidden {
+        display: none;
+      }
+
+      .tabs {
+        min-height: 2rem;
+      }
+    </style>
+  </head>
+  <body>
+    <section class="section">
+      <div id="tabs" class="tabs is-centered">
+        <ul>
+          <li class="is-active">
+            <a href="javascript:changeTab(0)">Cumulative</a>
+          </li>
+          <li><a href="javascript:changeTab(1)">Increases</a></li>
+        </ul>
+      </div>
+      <div class="container" style="width: 100%">
+        <div id="graph1" style="width: 100%; height: 100%"></div>
+        <div id="graph2" style="width: 100%; height: 100%"></div>
+      </div>
+    </section>
 
     <script>
-        var xmlhttp = new XMLHttpRequest();
-        var url = "https://coronavirus.data.gov.uk/api/v1/data?filters=areaType=nation;areaName=England&structure=%7B%22areaType%22:%22areaType%22,%22areaName%22:%22areaName%22,%22areaCode%22:%22areaCode%22,%22date%22:%22date%22,%22vaccinationsAgeDemographics%22:%22vaccinationsAgeDemographics%22%7D&format=json";
+      var GRAPH_1 = document.getElementById("graph1");
+      var GRAPH_2 = document.getElementById("graph2");
+      var TABS = document.getElementById("tabs");
 
-        xmlhttp.onreadystatechange = function() {
-            if (this.readyState == 4 && this.status == 200) {
-                var data = JSON.parse(this.responseText);
-                console.log(data)
-                var dates = data.data.map(x => x.date)
+      function changeTab(index) {
+        if (index == 0) {
+          GRAPH_1.classList.remove("hidden");
+          GRAPH_2.classList.add("hidden");
+          TABS.querySelector("li:nth-child(1)").classList.add("is-active");
+          TABS.querySelector("li:nth-child(2)").classList.remove("is-active");
+        } else if (index == 1) {
+          GRAPH_1.classList.add("hidden");
+          GRAPH_2.classList.remove("hidden");
+          TABS.querySelector("li:nth-child(1)").classList.remove("is-active");
+          TABS.querySelector("li:nth-child(2)").classList.add("is-active");
+        }
+        window.dispatchEvent(new Event("resize"));
+      }
 
+      var xmlhttp = new XMLHttpRequest();
+      var url =
+        "https://coronavirus.data.gov.uk/api/v1/data?filters=areaType=nation;areaName=England&structure=%7B%22areaType%22:%22areaType%22,%22areaName%22:%22areaName%22,%22areaCode%22:%22areaCode%22,%22date%22:%22date%22,%22vaccinationsAgeDemographics%22:%22vaccinationsAgeDemographics%22%7D&format=json";
 
-                // Get the age groups
-                let ages = data.data[0].vaccinationsAgeDemographics.map(x => x.age)
-                let rawAges = ages.reduce((base, x) => {base[x] = []; return base;}, {})
+      xmlhttp.onreadystatechange = function () {
+        if (this.readyState == 4 && this.status == 200) {
+          var data = JSON.parse(this.responseText);
+          var dates = data.data.map((x) => x.date);
 
-                data.data.forEach((datum) => {
-                    let i = 0;
-                    ages.forEach((age) => {
-                        rawAges[age].push(datum.vaccinationsAgeDemographics[i].cumVaccinationFirstDoseUptakeByVaccinationDatePercentage)
-                        i++;
-                    })
-                })
+          // Get the age groups
+          let ages = data.data[0].vaccinationsAgeDemographics.map((x) => x.age);
+          let rawAges = ages.reduce((base, x) => {
+            base[x] = [];
+            return base;
+          }, {});
 
-                traces = []
-                for (let [key, value] of Object.entries(rawAges)) {
-                    name = key.replace("_", "-")
-                    traces.push({
-                        name,
-                        x: dates,
-                        y: value
-                    })
-                }
-                
-                // Put the youngest age at the bottom of the legend
-                traces.reverse()
+          data.data.forEach((datum) => {
+            let i = 0;
+            ages.forEach((age) => {
+              rawAges[age].push(
+                datum.vaccinationsAgeDemographics[i]
+                  .cumVaccinationFirstDoseUptakeByVaccinationDatePercentage
+              );
+              i++;
+            });
+          });
 
-                console.log(dates, rawAges)
-                TESTER = document.getElementById('tester');
-                Plotly.newPlot(
-                    TESTER,
-                    traces,
-                    {
-                        title: {
-                            text:'1st Dose Vaccine Uptake by Age Group',
-                            font: {
-                                family: 'Courier New, monospace',
-                                size: 28
-                            },
-                            xref: 'paper',
-                            x: 0.05,
-                        },
-                        xaxis: {
-                            title: {
-                                text: 'Date',
-                                font: {
-                                    family: 'Courier New, monospace',
-                                    size: 18,
-                                    color: '#7f7f7f'
-                                }
-                            },
-                        },
-                        yaxis: {
-                            title: {
-                                text: 'Percentage with 1st dose',
-                                font: {
-                                    family: 'Courier New, monospace',
-                                    size: 18,
-                                    color: '#7f7f7f'
-                                }
-                            }
-                        },
-                        hovermode: "x",
-                    },
-                    {responsive: true}
-                );
+          traces = [];
+          increase_traces = [];
+          for (let [key, value] of Object.entries(rawAges)) {
+            name = key.replace("_", "-");
+            traces.push({
+              name,
+              x: dates,
+              y: value,
+            });
 
+            // Determine the increases
+            changes = value.map(function (n, i) {
+              if (i == value.length - 1) return n;
+              return n - value[i + 1];
+            });
+
+            // Average them out
+            let average_changes = [];
+            let window_size = 7;
+            for (let i = 0; i < changes.length; i++) {
+              let average = 0;
+              let count = 0;
+              for (let j = i; j < i + window_size && j < changes.length; j++) {
+                average += changes[j];
+                count += 1;
+              }
+              rounded_average = Math.round((average * 100) / count) / 100;
+              average_changes.push(rounded_average);
             }
-        };
-        xmlhttp.open("GET", url, true);
-        xmlhttp.send();
 
+            increase_traces.push({
+              name,
+              x: dates,
+              y: average_changes,
+            });
+          }
 
+          // Put the youngest age at the bottom of the legend
+          traces.reverse();
+          increase_traces.reverse();
+          Plotly.newPlot(
+            GRAPH_1,
+            traces,
+            {
+              title: {
+                text: "1st Dose Vaccine Uptake by Age Group",
+                font: {
+                  family: "Courier New, monospace",
+                  size: 24,
+                },
+                xref: "paper",
+                x: 0.05,
+              },
+              xaxis: {
+                title: {
+                  text: "Date",
+                  font: {
+                    family: "Courier New, monospace",
+                    size: 18,
+                    color: "#7f7f7f",
+                  },
+                },
+              },
+              yaxis: {
+                title: {
+                  text: "Percentage of age group",
+                  font: {
+                    family: "Courier New, monospace",
+                    size: 18,
+                    color: "#7f7f7f",
+                  },
+                },
+              },
+              hovermode: "x",
+            },
+            { responsive: true }
+          );
 
+          Plotly.newPlot(
+            GRAPH_2,
+            increase_traces,
+            {
+              title: {
+                text: "1st Dose Vaccine % point increase (7 day average)",
+                font: {
+                  family: "Courier New, monospace",
+                  size: 24,
+                },
+                xref: "paper",
+                x: 0.05,
+              },
+              xaxis: {
+                title: {
+                  text: "Date",
+                  font: {
+                    family: "Courier New, monospace",
+                    size: 18,
+                    color: "#7f7f7f",
+                  },
+                },
+              },
+              yaxis: {
+                title: {
+                  text: "% point increase",
+                  font: {
+                    family: "Courier New, monospace",
+                    size: 18,
+                    color: "#7f7f7f",
+                  },
+                },
+              },
+              hovermode: "x unified",
+            },
+            { responsive: true }
+          );
+
+          GRAPH_2.classList.add("hidden");
+        }
+      };
+      xmlhttp.open("GET", url, true);
+      xmlhttp.send();
     </script>
-
-</body>
+  </body>
 </html>
