@@ -1,0 +1,369 @@
+<!DOCTYPE html>
+<html>
+  <head>
+    <title>Vaccine Uptake Graphs</title>
+    <script src="https://cdn.plot.ly/plotly-2.1.0.min.js"></script>
+    <link
+      rel="stylesheet"
+      href="https://cdn.jsdelivr.net/npm/bulma@0.9.3/css/bulma.min.css"
+    />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <style>
+      .section {
+        display: flex;
+        flex-direction: column;
+        align-items: stretch;
+        height: 100vh;
+      }
+
+      .hidden {
+        display: none;
+      }
+
+      .tabs {
+        min-height: 2rem;
+      }
+    </style>
+  </head>
+  <body>
+    <section class="section">
+      <div id="tabs" class="tabs is-centered">
+        <ul>
+          <li class="is-active">
+            <a href="javascript:changeTab(0)">Cumulative (NIMS)</a>
+          </li>
+          <li><a href="javascript:changeTab(1)">Increases (NIMS)</a></li>
+          <li><a href="javascript:changeTab(2)">Cumulative (ONS)</a></li>
+          <li><a href="javascript:changeTab(3)">Increases (ONS)</a></li>
+        </ul>
+      </div>
+      <div class="container is-fluid">
+        <div id="graph1" style="width: 100%; height: 100%"></div>
+        <div id="graph2" style="width: 100%; height: 100%"></div>
+        <div id="graph3" style="width: 100%; height: 100%"></div>
+        <div id="graph4" style="width: 100%; height: 100%"></div>
+      </div>
+    </section>
+
+    <script>
+
+      function dataToTraces(data, dates) {
+          traces = [];
+          increase_traces = [];
+          for (let [key, value] of Object.entries(data)) {
+            name = key.replace("_", "-");
+            traces.push({
+              name,
+              x: dates,
+              y: value,
+            });
+
+            // Determine the increases
+            changes = value.map(function (n, i) {
+              if (i == value.length - 1) return n;
+              return n - value[i + 1];
+            });
+
+            // Average them out
+            let average_changes = [];
+            let window_size = 7;
+            for (let i = 0; i < changes.length; i++) {
+              let average = 0;
+              let count = 0;
+              for (let j = i; j < i + window_size && j < changes.length; j++) {
+                average += changes[j];
+                count += 1;
+              }
+              rounded_average = Math.round((average * 100) / count) / 100;
+              average_changes.push(rounded_average);
+            }
+
+            increase_traces.push({
+              name,
+              x: dates,
+              y: average_changes,
+            });
+          }
+
+          traces.reverse();
+          increase_traces.reverse();
+
+          return [traces, increase_traces]
+      }
+
+      var ONS_POPULATIONS = {
+        "18_24": 4_709_589,
+        "25_29": 3_771_493,
+        "30_34": 3_824_652,
+        "35_39": 3_738_209,
+        "40_44": 3_476_303,
+        "45_49": 3_638_639,
+        "50_54": 3_875_351,
+        "55_59": 3_761_782,
+        "60_64": 3_196_813,
+        "65_69": 2_784_300,
+        "70_74": 2_814_128,
+        "75_79": 2_009_992,
+        "80_84": 1_449_189,
+        "85_89": 885_343,
+        "90+": 521_067,
+      }
+
+
+
+      var GRAPH_1 = document.getElementById("graph1");
+      var GRAPH_2 = document.getElementById("graph2");
+      var GRAPH_3 = document.getElementById("graph3");
+      var GRAPH_4 = document.getElementById("graph4");
+      var TABS = document.getElementById("tabs");
+
+      function changeTab(index) {
+        if (index == 0) {
+          GRAPH_1.classList.remove("hidden");
+          GRAPH_2.classList.add("hidden");
+          GRAPH_3.classList.add("hidden");
+          GRAPH_4.classList.add("hidden");
+          TABS.querySelector("li:nth-child(1)").classList.add("is-active");
+          TABS.querySelector("li:nth-child(2)").classList.remove("is-active");
+          TABS.querySelector("li:nth-child(3)").classList.remove("is-active");
+          TABS.querySelector("li:nth-child(4)").classList.remove("is-active");
+        } else if (index == 1) {
+          GRAPH_1.classList.add("hidden");
+          GRAPH_2.classList.remove("hidden");
+          GRAPH_3.classList.add("hidden");
+          GRAPH_4.classList.add("hidden");
+          TABS.querySelector("li:nth-child(1)").classList.remove("is-active");
+          TABS.querySelector("li:nth-child(2)").classList.add("is-active");
+          TABS.querySelector("li:nth-child(3)").classList.remove("is-active");
+          TABS.querySelector("li:nth-child(4)").classList.remove("is-active");
+        }
+        else if (index == 2) {
+          GRAPH_1.classList.add("hidden");
+          GRAPH_2.classList.add("hidden");
+          GRAPH_3.classList.remove("hidden");
+          GRAPH_4.classList.add("hidden");
+          TABS.querySelector("li:nth-child(1)").classList.remove("is-active");
+          TABS.querySelector("li:nth-child(2)").classList.remove("is-active");
+          TABS.querySelector("li:nth-child(3)").classList.add("is-active");
+          TABS.querySelector("li:nth-child(4)").classList.remove("is-active");
+        }
+        else if (index == 3) {
+          GRAPH_1.classList.add("hidden");
+          GRAPH_2.classList.add("hidden");
+          GRAPH_3.classList.add("hidden");
+          GRAPH_4.classList.remove("hidden");
+          TABS.querySelector("li:nth-child(1)").classList.remove("is-active");
+          TABS.querySelector("li:nth-child(2)").classList.remove("is-active");
+          TABS.querySelector("li:nth-child(3)").classList.remove("is-active");
+          TABS.querySelector("li:nth-child(4)").classList.add("is-active");
+        }
+        window.dispatchEvent(new Event("resize"));
+      }
+
+      var xmlhttp = new XMLHttpRequest();
+      var url =
+        "https://coronavirus.data.gov.uk/api/v1/data?filters=areaType=nation;areaName=England&structure=%7B%22areaType%22:%22areaType%22,%22areaName%22:%22areaName%22,%22areaCode%22:%22areaCode%22,%22date%22:%22date%22,%22vaccinationsAgeDemographics%22:%22vaccinationsAgeDemographics%22%7D&format=json";
+
+      xmlhttp.onreadystatechange = function () {
+        if (this.readyState == 4 && this.status == 200) {
+          var data = JSON.parse(this.responseText);
+          var dates = data.data.map((x) => x.date);
+
+          // Get the age groups
+          let ages = data.data[0].vaccinationsAgeDemographics.map((x) => x.age);
+          let rawAges = ages.reduce((base, x) => {
+            base[x] = [];
+            return base;
+          }, {});
+
+          let rawAgesONS = ages.reduce((base, x) => {
+            base[x] = [];
+            return base;
+          }, {});
+
+          data.data.forEach((datum) => {
+            let i = 0;
+            ages.forEach((age) => {
+              rawAges[age].push(
+                datum.vaccinationsAgeDemographics[i]
+                  .cumVaccinationFirstDoseUptakeByVaccinationDatePercentage
+              );
+
+              rawAgesONS[age].push(
+                Math.round(datum.vaccinationsAgeDemographics[i]
+                  .cumPeopleVaccinatedFirstDoseByVaccinationDate / ONS_POPULATIONS[age] * 10000) / 100
+              );
+              i++;
+            });
+          });
+
+          let [traces, increase_traces] = dataToTraces(rawAges, dates)
+          let [tracesONS, increase_tracesONS] = dataToTraces(rawAgesONS, dates)
+
+
+          Plotly.newPlot(
+            GRAPH_1,
+            traces,
+            {
+              title: {
+                text: "1st Dose Vaccine Uptake by Age Group - NIMS",
+                font: {
+                  family: "Courier New, monospace",
+                  size: 24,
+                },
+                xref: "paper",
+                x: 0.05,
+              },
+              xaxis: {
+                title: {
+                  text: "Date",
+                  font: {
+                    family: "Courier New, monospace",
+                    size: 18,
+                    color: "#7f7f7f",
+                  },
+                },
+              },
+              yaxis: {
+                title: {
+                  text: "Percentage of age group",
+                  font: {
+                    family: "Courier New, monospace",
+                    size: 18,
+                    color: "#7f7f7f",
+                  },
+                },
+                range: [0, 100],
+              },
+              hovermode: "x",
+            },
+            { responsive: true }
+          );
+
+          Plotly.newPlot(
+            GRAPH_2,
+            increase_traces,
+            {
+              title: {
+                text: "1st Dose Vaccine % point increase (7 day average) - NIMS",
+                font: {
+                  family: "Courier New, monospace",
+                  size: 24,
+                },
+                xref: "paper",
+                x: 0.05,
+              },
+              xaxis: {
+                title: {
+                  text: "Date",
+                  font: {
+                    family: "Courier New, monospace",
+                    size: 18,
+                    color: "#7f7f7f",
+                  },
+                },
+              },
+              yaxis: {
+                title: {
+                  text: "% point increase",
+                  font: {
+                    family: "Courier New, monospace",
+                    size: 18,
+                    color: "#7f7f7f",
+                  },
+                },
+                range: [0, 6],
+              },
+              hovermode: "x unified",
+            },
+            { responsive: true }
+          );
+
+          Plotly.newPlot(
+            GRAPH_3,
+            tracesONS,
+            {
+              title: {
+                text: "1st Dose Vaccine Uptake by Age Group - ONS",
+                font: {
+                  family: "Courier New, monospace",
+                  size: 24,
+                },
+                xref: "paper",
+                x: 0.05,
+              },
+              xaxis: {
+                title: {
+                  text: "Date",
+                  font: {
+                    family: "Courier New, monospace",
+                    size: 18,
+                    color: "#7f7f7f",
+                  },
+                },
+              },
+              yaxis: {
+                title: {
+                  text: "Percentage of age group",
+                  font: {
+                    family: "Courier New, monospace",
+                    size: 18,
+                    color: "#7f7f7f",
+                  },
+                },
+                range: [0, 100],
+              },
+              hovermode: "x",
+            },
+            { responsive: true }
+          );
+
+          Plotly.newPlot(
+            GRAPH_4,
+            increase_tracesONS,
+            {
+              title: {
+                text: "1st Dose Vaccine % point increase (7 day average) - ONS",
+                font: {
+                  family: "Courier New, monospace",
+                  size: 24,
+                },
+                xref: "paper",
+                x: 0.05,
+              },
+              xaxis: {
+                title: {
+                  text: "Date",
+                  font: {
+                    family: "Courier New, monospace",
+                    size: 18,
+                    color: "#7f7f7f",
+                  },
+                },
+              },
+              yaxis: {
+                title: {
+                  text: "% point increase",
+                  font: {
+                    family: "Courier New, monospace",
+                    size: 18,
+                    color: "#7f7f7f",
+                  },
+                },
+                range: [0, 6],
+              },
+              hovermode: "x unified",
+            },
+            { responsive: true }
+          );
+
+          GRAPH_2.classList.add("hidden");
+          GRAPH_3.classList.add("hidden");
+          GRAPH_4.classList.add("hidden");
+        }
+      };
+      xmlhttp.open("GET", url, true);
+      xmlhttp.send();
+    </script>
+  </body>
+</html>
