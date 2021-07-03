@@ -46,49 +46,48 @@
     </section>
 
     <script>
-
       function dataToTraces(data, dates) {
-          traces = [];
-          increase_traces = [];
-          for (let [key, value] of Object.entries(data)) {
-            name = key.replace("_", "-");
-            traces.push({
-              name,
-              x: dates,
-              y: value,
-            });
+        traces = [];
+        increase_traces = [];
+        for (let [key, value] of Object.entries(data)) {
+          name = key.replace("_", "-");
+          traces.push({
+            name,
+            x: dates,
+            y: value,
+          });
 
-            // Determine the increases
-            changes = value.map(function (n, i) {
-              if (i == value.length - 1) return n;
-              return n - value[i + 1];
-            });
+          // Determine the increases
+          changes = value.map(function (n, i) {
+            if (i == value.length - 1) return n;
+            return n - value[i + 1];
+          });
 
-            // Average them out
-            let average_changes = [];
-            let window_size = 7;
-            for (let i = 0; i < changes.length; i++) {
-              let average = 0;
-              let count = 0;
-              for (let j = i; j < i + window_size && j < changes.length; j++) {
-                average += changes[j];
-                count += 1;
-              }
-              rounded_average = Math.round((average * 100) / count) / 100;
-              average_changes.push(rounded_average);
+          // Average them out
+          let average_changes = [];
+          let window_size = 7;
+          for (let i = 0; i < changes.length; i++) {
+            let average = 0;
+            let count = 0;
+            for (let j = i; j < i + window_size && j < changes.length; j++) {
+              average += changes[j];
+              count += 1;
             }
-
-            increase_traces.push({
-              name,
-              x: dates,
-              y: average_changes,
-            });
+            rounded_average = Math.round((average * 100) / count) / 100;
+            average_changes.push(rounded_average);
           }
 
-          traces.reverse();
-          increase_traces.reverse();
+          increase_traces.push({
+            name,
+            x: dates,
+            y: average_changes,
+          });
+        }
 
-          return [traces, increase_traces]
+        traces.reverse();
+        increase_traces.reverse();
+
+        return [traces, increase_traces];
       }
 
       var ONS_POPULATIONS = {
@@ -107,9 +106,7 @@
         "80_84": 1_449_189,
         "85_89": 885_343,
         "90+": 521_067,
-      }
-
-
+      };
 
       var GRAPH_1 = document.getElementById("graph1");
       var GRAPH_2 = document.getElementById("graph2");
@@ -136,8 +133,7 @@
           TABS.querySelector("li:nth-child(2)").classList.add("is-active");
           TABS.querySelector("li:nth-child(3)").classList.remove("is-active");
           TABS.querySelector("li:nth-child(4)").classList.remove("is-active");
-        }
-        else if (index == 2) {
+        } else if (index == 2) {
           GRAPH_1.classList.add("hidden");
           GRAPH_2.classList.add("hidden");
           GRAPH_3.classList.remove("hidden");
@@ -146,8 +142,7 @@
           TABS.querySelector("li:nth-child(2)").classList.remove("is-active");
           TABS.querySelector("li:nth-child(3)").classList.add("is-active");
           TABS.querySelector("li:nth-child(4)").classList.remove("is-active");
-        }
-        else if (index == 3) {
+        } else if (index == 3) {
           GRAPH_1.classList.add("hidden");
           GRAPH_2.classList.add("hidden");
           GRAPH_3.classList.add("hidden");
@@ -190,16 +185,19 @@
               );
 
               rawAgesONS[age].push(
-                Math.round(datum.vaccinationsAgeDemographics[i]
-                  .cumPeopleVaccinatedFirstDoseByVaccinationDate / ONS_POPULATIONS[age] * 10000) / 100
+                Math.round(
+                  (datum.vaccinationsAgeDemographics[i]
+                    .cumPeopleVaccinatedFirstDoseByVaccinationDate /
+                    ONS_POPULATIONS[age]) *
+                    10000
+                ) / 100
               );
               i++;
             });
           });
 
-          let [traces, increase_traces] = dataToTraces(rawAges, dates)
-          let [tracesONS, increase_tracesONS] = dataToTraces(rawAgesONS, dates)
-
+          let [traces, increase_traces] = dataToTraces(rawAges, dates);
+          let [tracesONS, increase_tracesONS] = dataToTraces(rawAgesONS, dates);
 
           Plotly.newPlot(
             GRAPH_1,
