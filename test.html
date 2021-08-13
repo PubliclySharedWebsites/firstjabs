@@ -171,7 +171,7 @@
             return base;
           }, {});
 
-          let rawAgesONS = ages.reduce((base, x) => {
+          let rawAgesONS = ages.filter(x => x != "90+").reduce((base, x) => {
             base[x] = [];
             return base;
           }, {});
@@ -184,14 +184,16 @@
                   .cumVaccinationFirstDoseUptakeByVaccinationDatePercentage
               );
 
-              rawAgesONS[age].push(
-                Math.round(
-                  (datum.vaccinationsAgeDemographics[i]
-                    .cumPeopleVaccinatedFirstDoseByVaccinationDate /
-                    ONS_POPULATIONS[age]) *
-                    10000
-                ) / 100
-              );
+              if (age != "90+") {
+                rawAgesONS[age].push(
+                  Math.round(
+                    (datum.vaccinationsAgeDemographics[i]
+                      .cumPeopleVaccinatedFirstDoseByVaccinationDate /
+                      ONS_POPULATIONS[age]) *
+                      10000
+                  ) / 100
+                );
+              }
               i++;
             });
           });
